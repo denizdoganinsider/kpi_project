@@ -15,6 +15,8 @@ type IUserRepository interface {
 	GetUsersByRole(role string) []domain.User
 	AddUser(user domain.User) error
 	GetById(id int64) (domain.User, error)
+	DeleteById(id int64) error
+	UpdateUser(user domain.User) error
 }
 
 type UserRepository struct {
@@ -96,6 +98,14 @@ func (userRepository *UserRepository) GetById(userId int64) (domain.User, error)
 		Role:         role,
 		CreatedAt:    created_at,
 	}, nil
+}
+
+func (userRepository *UserRepository) DeleteById(id int64) error {
+	return errors.New("delete error")
+}
+
+func (userRepository *UserRepository) UpdateUser(user domain.User) error {
+	return errors.New("update error")
 }
 
 func extractUserFromRows(userRows *sql.Rows) []domain.User {
