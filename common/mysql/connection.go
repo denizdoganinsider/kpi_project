@@ -2,32 +2,35 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log"
+	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/labstack/gommon/log"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 )
 
-func GetConnectionPool(context context.Context, config Config) *pgxpool.Pool {
-	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable statement_cache_mode=describe pool_max_conns=%s pool_max_conn_idle_time=%s",
-		config.Host,
-		config.Port,
-		config.UserName,
-		config.Password,
-		config.DbName,
-		config.MaxConnections,
-		config.MaxConnectionIdleTime)
+func GetConnectionPool(ctx context.Context, config Config) *sql.DB {
+	// Create DSN (Data Source Name)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+		config.UserName, config.Password, config.Host, config.Port, config.DbName)
 
-	connConfig, parseConfigErr := pgxpool.ParseConfig(connString)
-	if parseConfigErr != nil {
-		panic(parseConfigErr)
-	}
-
-	conn, err := pgxpool.ConnectConfig(context, connConfig)
+	// Connect to database
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Error("Unable to connect to database: %v\n", err)
-		panic(err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	return conn
+	// Set connection pool settings
+	db.SetMaxOpenConns(config.MaxConnections)
+	db.SetConnMaxIdleTime(time.Duration(config.MaxConnectionIdleTime) * time.Second)
+
+	// Check connection
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+
+	fmt.Println("MySQL connection established successfully!")
+
+	return db
 }

@@ -34,5 +34,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.3
+	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.4.2
 )

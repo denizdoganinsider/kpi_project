@@ -6,6 +6,6 @@ type Config struct {
 	UserName              string
 	Password              string
 	DbName                string
-	MaxConnections        string
-	MaxConnectionIdleTime string
+	MaxConnections        int
+	MaxConnectionIdleTime int
 }

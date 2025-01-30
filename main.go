@@ -1,142 +1,76 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/denizdoganinsider/kpi_project/common/app"
+	"github.com/denizdoganinsider/kpi_project/common/mysql"
+	"github.com/denizdoganinsider/kpi_project/controller"
+	"github.com/denizdoganinsider/kpi_project/persistence"
+	"github.com/denizdoganinsider/kpi_project/service"
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
-	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/labstack/echo/v4"
 )
 
-// Global database instance
-var db *sql.DB
-
 func main() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf(".env file wasn't loaded.: %v", err)
+	ctx := context.Background()
+	e := echo.New()
+
+	// Load config
+	configurationManager := app.NewConfigurationManager()
+
+	// Create database connection
+	db := mysql.GetConnectionPool(ctx, configurationManager.MySqlConfig)
+
+	// Check if db is nil
+	if db == nil {
+		log.Fatalf("Error: Database connection is nil")
 	}
 
-	// Get connection's information from .env file
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
+	// Create tables BEFORE closing DB
+	createTables(db)
 
-	// Create DSN (Data Source Name)
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+	userRepository := persistence.NewUserRepository(db)
+	userService := service.NewUserService(userRepository)
+	userController := controller.NewUserController(userService)
 
-	// Connect to database
-	db, err = sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	// Register routes
+	userController.RegisterRoutes(e)
+
+	// Graceful shutdown handling
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	// Echo sunucusunu başlat (Arka planda çalışsın)
+	go func() {
+		if err := e.Start(":8080"); err != nil {
+			log.Fatalf("Error starting Echo server: %v", err)
+		}
+	}()
+
+	// Wait for termination signal
+	<-sigs
+
+	// Shutdown server
+	fmt.Println("Shutting down server...")
+	if err := e.Shutdown(ctx); err != nil {
+		log.Fatalf("Server shutdown failed: %v", err)
 	}
-	defer db.Close()
 
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Database connection failed: %v", err)
+	// Close database connection gracefully on exit
+	if err := db.Close(); err != nil {
+		log.Fatalf("Error closing database: %v", err)
 	}
-
-	fmt.Println("MySQL connection completed successfully!")
-
-	// Create Tables
-	createTables()
-
-	/*
-		hashedPassword, err := hashPassword("password123")
-
-		if err != nil {
-			log.Fatal("While hashing password, an error occurred:", err)
-		}
-
-		// user adding to db
-		userID, err := insertUser(db, "deniz", "deniz.dogan@useinsider.com", hashedPassword, "admin")
-		if err != nil {
-			log.Fatal("While adding user, an error occurred:", err)
-		}
-
-		fmt.Println("New user was added. User ID:", userID) */
-
-	/* startServer() */
-
-	/* var userRepository persistence.IUserRepository = persistence.NewUserRepository(db) */
-
-	/* GetAllUsers Test */
-	/* fmt.Println(userRepository.GetAllUsers()) */
-
-	/* GetUsersByRole Test */
-	/* fmt.Println(userRepository.GetUsersByRole("admin")) */
-
-	/* AddUser Test  */
-	/*
-		hashedPassword, err := hashPassword("testPassword")
-		if err != nil {
-			log.Fatal("While hashing password, an error occurred:", err)
-		}
-
-		newUser := domain.User{
-			Username:     "test",
-			Email:        "test@useinsider.com",
-			PasswordHash: hashedPassword,
-			Role:         "normal-user",
-		}
-
-		userRepository.AddUser(newUser)
-	*/
-
-	/* GetById Test */
-	/*
-		user, _ := userRepository.GetById(2)
-		fmt.Println(user)
-	*/
-
-	/* DeleteById Test */
-	/* userRepository.DeleteById(2) */
-
-	/* UpdateUsername Test */
-	/* userRepository.UpdateUsername("jack_kau", 1) */
+	fmt.Println("Database connection closed.")
 }
 
-/*
-	func insertUser(db *sql.DB, username, email, passwordHash, role string) (int64, error) {
-		query := `
-		INSERT INTO users (username, email, password_hash, role)
-		VALUES (?, ?, ?, ?)
-		`
-		result, err := db.Exec(query, username, email, passwordHash, role)
-		if err != nil {
-			return 0, err
-		}
-
-		// getting added user's id
-		lastInsertID, err := result.LastInsertId()
-		if err != nil {
-			return 0, err
-		}
-
-		return lastInsertID, nil
-	}
-*/
-
-/*
-	func startServer() {
-		e := echo.New()
-
-		e.Start("localhost:8080")
-	}
-*/
-
-func hashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hashedPassword), err
-}
-
-func createTables() {
+func createTables(db *sql.DB) {
 	createUsersTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -179,27 +113,21 @@ func createTables() {
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
-	_, err := db.Exec(createUsersTable)
-	if err != nil {
-		log.Fatalf("Error creating Users table: %v", err)
+	tables := []struct {
+		name string
+		sql  string
+	}{
+		{"Users", createUsersTable},
+		{"Transactions", createTransactionsTable},
+		{"Balances", createBalancesTable},
+		{"AuditLogs", createAuditLogsTable},
 	}
-	fmt.Println("Users table created successfully!")
 
-	_, err = db.Exec(createTransactionsTable)
-	if err != nil {
-		log.Fatalf("Error creating Transactions table: %v", err)
+	for _, table := range tables {
+		_, err := db.Exec(table.sql)
+		if err != nil {
+			log.Fatalf("Error creating %s table: %v", table.name, err)
+		}
+		fmt.Printf("%s table created successfully!\n", table.name)
 	}
-	fmt.Println("Transactions table created successfully!")
-
-	_, err = db.Exec(createBalancesTable)
-	if err != nil {
-		log.Fatalf("Error creating Balances table: %v", err)
-	}
-	fmt.Println("Balances table created successfully!")
-
-	_, err = db.Exec(createAuditLogsTable)
-	if err != nil {
-		log.Fatalf("Error creating Audit_Logs table: %v", err)
-	}
-	fmt.Println("Audit_Logs table created successfully!")
 }
