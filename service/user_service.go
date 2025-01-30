@@ -8,10 +8,11 @@ import (
 	"github.com/denizdoganinsider/kpi_project/persistence"
 	"github.com/denizdoganinsider/kpi_project/service/common"
 	"github.com/denizdoganinsider/kpi_project/service/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type IUserService interface {
-	Add(UserCreate model.UserCreate) error
+	AddUser(UserCreate model.UserCreate) error
 	DeleteById(id int64) error
 	GetById(id int64) (domain.User, error)
 	UpdateUsername(username string, id int64) error
@@ -29,16 +30,21 @@ func NewUserService(userRepository persistence.IUserRepository) IUserService {
 	}
 }
 
-func (userService *UserService) Add(userCreate model.UserCreate) error {
-	validateError := validateProductCreate(userCreate)
+func (userService *UserService) AddUser(userCreate model.UserCreate) error {
+	validateError := validateUserCreate(userCreate)
 	if validateError != nil {
 		return validateError
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userCreate.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("error hashing password: %v", err)
 	}
 
 	return userService.userRepository.AddUser(domain.User{
 		Username:     userCreate.Username,
 		Email:        userCreate.Email,
-		PasswordHash: userCreate.PasswordHash,
+		PasswordHash: string(hashedPassword),
 		Role:         userCreate.Role,
 	})
 }
@@ -63,7 +69,7 @@ func (userService *UserService) GetUsersByRole(role string) []domain.User {
 	return userService.userRepository.GetUsersByRole(role)
 }
 
-func validateProductCreate(userCreate model.UserCreate) error {
+func validateUserCreate(userCreate model.UserCreate) error {
 	if !strings.Contains(userCreate.Email, common.AT_SYMBOl) {
 		return fmt.Errorf("the given email doesn't contains %s", common.AT_SYMBOl)
 	}

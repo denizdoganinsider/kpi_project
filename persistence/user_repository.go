@@ -68,7 +68,7 @@ func (userRepository *UserRepository) AddUser(user domain.User) error {
 		return err
 	}
 
-	log.Fatalf("Product added with %v", result)
+	log.Printf("User added with %v", result)
 	return nil
 }
 
