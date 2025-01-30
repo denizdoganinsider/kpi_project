@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/denizdoganinsider/kpi_project/persistence"
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
@@ -65,7 +64,7 @@ func main() {
 
 	/* startServer() */
 
-	var userRepository persistence.IUserRepository = persistence.NewUserRepository(db)
+	/* var userRepository persistence.IUserRepository = persistence.NewUserRepository(db) */
 
 	/* GetAllUsers Test */
 	/* fmt.Println(userRepository.GetAllUsers()) */
@@ -90,9 +89,17 @@ func main() {
 		userRepository.AddUser(newUser)
 	*/
 
-	user, _ := userRepository.GetById(2)
+	/* GetById Test */
+	/*
+		user, _ := userRepository.GetById(2)
+		fmt.Println(user)
+	*/
 
-	fmt.Println(user)
+	/* DeleteById Test */
+	/* userRepository.DeleteById(2) */
+
+	/* UpdateUsername Test */
+	/* userRepository.UpdateUsername("jack_kau", 1) */
 }
 
 /*

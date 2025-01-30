@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/denizdoganinsider/kpi_project/domain"
 )
@@ -16,7 +17,7 @@ type IUserRepository interface {
 	AddUser(user domain.User) error
 	GetById(id int64) (domain.User, error)
 	DeleteById(id int64) error
-	UpdateUser(user domain.User) error
+	UpdateUsername(username string, id int64) error
 }
 
 type UserRepository struct {
@@ -87,7 +88,7 @@ func (userRepository *UserRepository) GetById(userId int64) (domain.User, error)
 	err := queryRow.Scan(&id, &username, &email, &password_hash, &role, &created_at, &updated_at)
 
 	if err != nil {
-		return domain.User{}, errors.New(fmt.Sprintf("While getting user with id %d", userId))
+		return domain.User{}, fmt.Errorf("while getting user with id %d", userId)
 	}
 
 	return domain.User{
@@ -101,11 +102,35 @@ func (userRepository *UserRepository) GetById(userId int64) (domain.User, error)
 }
 
 func (userRepository *UserRepository) DeleteById(id int64) error {
-	return errors.New("delete error")
+	deleteSql := `DELETE FROM users WHERE id = ?`
+
+	_, err := userRepository.GetById(id)
+
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	_, err = userRepository.db.Exec(deleteSql, id)
+
+	if err != nil {
+		return fmt.Errorf("error deleting user with id %d", id)
+	}
+
+	log.Println("User deleted successfully")
+	return nil
 }
 
-func (userRepository *UserRepository) UpdateUser(user domain.User) error {
-	return errors.New("update error")
+func (userRepository *UserRepository) UpdateUsername(username string, id int64) error {
+	updateSql := `UPDATE users SET username = ?, updated_at = ? WHERE id = ?`
+	updatedAt := time.Now()
+	_, err := userRepository.db.Exec(updateSql, username, updatedAt, id)
+
+	if err != nil {
+		return fmt.Errorf("error updating user with id %d: %w", id, err)
+	}
+
+	log.Println("Username updated successfully")
+	return nil
 }
 
 func extractUserFromRows(userRows *sql.Rows) []domain.User {
