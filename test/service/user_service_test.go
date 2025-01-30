@@ -43,11 +43,11 @@ func Test_GetAllUsers(t *testing.T) {
 
 func Test_WhenNoValidationErrorOccurred_ShouldAddUser(t *testing.T) {
 	t.Run("WhenNoValidationErrorOccurred_ShouldAddUser", func(t *testing.T) {
-		userService.Add(model.UserCreate{
-			Username:     "TestUserForAdding",
-			Email:        "TestEmailForUserAdding@useinsider.com",
-			PasswordHash: "TestPasswordHashForAdding",
-			Role:         "TestRoleForAdding",
+		userService.AddUser(model.UserCreate{
+			Username: "TestUserForAdding",
+			Email:    "TestEmailForUserAdding@useinsider.com",
+			Password: "TestPasswordHashForAdding",
+			Role:     "TestRoleForAdding",
 		})
 
 		actualUsers := userService.GetAllUsers()
