@@ -35,27 +35,32 @@ func (userService *UserService) Add(userCreate model.UserCreate) error {
 		return validateError
 	}
 
-	return nil
+	return userService.userRepository.AddUser(domain.User{
+		Username:     userCreate.Username,
+		Email:        userCreate.Email,
+		PasswordHash: userCreate.PasswordHash,
+		Role:         userCreate.Role,
+	})
 }
 
 func (userService *UserService) DeleteById(id int64) error {
-	return nil
+	return userService.userRepository.DeleteById(id)
 }
 
 func (userService *UserService) GetById(id int64) (domain.User, error) {
-	return domain.User{}, nil
+	return userService.userRepository.GetById(id)
 }
 
 func (userService *UserService) UpdateUsername(username string, id int64) error {
-	return nil
+	return userService.userRepository.UpdateUsername(username, id)
 }
 
 func (userService *UserService) GetAllUsers() []domain.User {
-	return nil
+	return userService.userRepository.GetAllUsers()
 }
 
 func (userService *UserService) GetUsersByRole(role string) []domain.User {
-	return nil
+	return userService.userRepository.GetUsersByRole(role)
 }
 
 func validateProductCreate(userCreate model.UserCreate) error {

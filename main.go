@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/denizdoganinsider/kpi_project/persistence"
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
@@ -65,7 +64,7 @@ func main() {
 
 	/* startServer() */
 
-	var userRepository persistence.IUserRepository = persistence.NewUserRepository(db)
+	/* var userRepository persistence.IUserRepository = persistence.NewUserRepository(db) */
 
 	/* GetAllUsers Test */
 	/* fmt.Println(userRepository.GetAllUsers()) */
