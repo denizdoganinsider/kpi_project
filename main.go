@@ -90,9 +90,17 @@ func main() {
 		userRepository.AddUser(newUser)
 	*/
 
-	user, _ := userRepository.GetById(2)
+	/* GetById Test */
+	/*
+		user, _ := userRepository.GetById(2)
+		fmt.Println(user)
+	*/
 
-	fmt.Println(user)
+	/* DeleteById Test */
+	/* userRepository.DeleteById(2) */
+
+	/* UpdateUsername Test */
+	/* userRepository.UpdateUsername("jack_kau", 1) */
 }
 
 /*
