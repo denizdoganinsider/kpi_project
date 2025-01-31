@@ -35,7 +35,7 @@ func (userController *UserController) RegisterRoutes(e *echo.Echo) {
 	*/
 
 	e.GET("/api/v1/users", userController.GetAllUsers)
-	e.GET("api/v1/users/:id", userController.GetUserById)
+	e.GET("/api/v1/users/:id", userController.GetUserById)
 	e.POST("/api/v1/users", userController.AddUser)
 	e.PUT("/api/v1/users/:id", userController.UpdateUsername)
 	e.DELETE("/api/v1/users/:id", userController.DeleteUserById)
