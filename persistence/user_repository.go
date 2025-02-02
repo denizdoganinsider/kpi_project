@@ -64,7 +64,7 @@ func (userRepository *UserRepository) AddUser(user domain.User) error {
 	result, err := userRepository.db.Exec(insertQuery, user.Username, user.Email, user.PasswordHash, user.Role)
 
 	if err != nil {
-		log.Fatalf("Failed to add new user %v", err)
+		log.Printf("Failed to add new user %v", err)
 		return err
 	}
 
@@ -88,7 +88,7 @@ func (userRepository *UserRepository) GetById(userId int64) (domain.User, error)
 	err := queryRow.Scan(&id, &username, &email, &password_hash, &role, &created_at, &updated_at)
 
 	if err != nil {
-		return domain.User{}, fmt.Errorf("while getting user with id %d", userId)
+		return domain.User{}, fmt.Errorf("error occurred while getting user with id %d", userId)
 	}
 
 	return domain.User{
