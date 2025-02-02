@@ -64,7 +64,7 @@ func (userRepository *UserRepository) AddUser(user domain.User) error {
 	result, err := userRepository.db.Exec(insertQuery, user.Username, user.Email, user.PasswordHash, user.Role)
 
 	if err != nil {
-		log.Fatalf("Failed to add new user %v", err)
+		log.Printf("Failed to add new user %v", err)
 		return err
 	}
 

@@ -16,6 +16,7 @@ import (
 	"github.com/denizdoganinsider/kpi_project/persistence"
 	"github.com/denizdoganinsider/kpi_project/service"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -45,6 +46,27 @@ func main() {
 			return next(c)
 		}
 	})
+
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: "[${time_rfc3339}] ${method} ${uri} ${status} ${latency_human}\n",
+	}))
+
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			requestID := c.Request().Header.Get(echo.HeaderXRequestID)
+			if requestID == "" {
+				requestID = uuid.New().String()
+				c.Request().Header.Set(echo.HeaderXRequestID, requestID)
+			}
+			c.Response().Header().Set(echo.HeaderXRequestID, requestID)
+			return next(c)
+		}
+	})
+
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format:           "[${time_rfc3339}] ${id} ${method} ${uri} ${status} ${latency_human}\n",
+		CustomTimeFormat: "2006-01-02 15:04:05",
+	}))
 
 	// Load config
 	configurationManager := app.NewConfigurationManager()
