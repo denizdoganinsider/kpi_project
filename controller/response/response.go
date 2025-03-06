@@ -12,6 +12,14 @@ type UserResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type TokenResponse struct {
+	Token string `json:"token"`
+}
+
+type SuccessResponse struct {
+	Message string `json:"message"`
+}
+
 func ToResponse(user domain.User) UserResponse {
 	return UserResponse{
 		Username:  user.Username,

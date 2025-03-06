@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -17,6 +17,7 @@ import (
 	"github.com/denizdoganinsider/kpi_project/service"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -80,14 +81,16 @@ func main() {
 	}
 
 	// Create tables BEFORE closing DB
-	createTables(db)
+	runMigrations()
 
 	userRepository := persistence.NewUserRepository(db)
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
+	authController := controller.NewAuthController(userService)
 
 	// Register routes
 	userController.RegisterRoutes(e)
+	authController.RegisterRoutes(e)
 
 	// Graceful shutdown handling
 	sigs := make(chan os.Signal, 1)
@@ -116,64 +119,30 @@ func main() {
 	fmt.Println("Database connection closed.")
 }
 
-func createTables(db *sql.DB) {
-	createUsersTable := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		username VARCHAR(100) NOT NULL UNIQUE,
-		email VARCHAR(100) NOT NULL UNIQUE,
-		password_hash VARCHAR(255) NOT NULL,
-		role VARCHAR(50),
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-	);`
-
-	createTransactionsTable := `
-	CREATE TABLE IF NOT EXISTS transactions (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		from_user_id INT NOT NULL,
-		to_user_id INT NOT NULL,
-		amount DECIMAL(10, 2) NOT NULL,
-		type VARCHAR(50) NOT NULL,
-		status VARCHAR(50) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
-	);`
-
-	createBalancesTable := `
-	CREATE TABLE IF NOT EXISTS balances (
-		user_id INT PRIMARY KEY,
-		amount DECIMAL(10, 2) NOT NULL,
-		last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-	);`
-
-	createAuditLogsTable := `
-	CREATE TABLE IF NOT EXISTS audit_logs (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		entity_type VARCHAR(50) NOT NULL,
-		entity_id INT NOT NULL,
-		action VARCHAR(50) NOT NULL,
-		details TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	tables := []struct {
-		name string
-		sql  string
-	}{
-		{"Users", createUsersTable},
-		{"Transactions", createTransactionsTable},
-		{"Balances", createBalancesTable},
-		{"AuditLogs", createAuditLogsTable},
+func loadEnvironmentVariables() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
 	}
+}
 
-	for _, table := range tables {
-		_, err := db.Exec(table.sql)
-		if err != nil {
-			log.Fatalf("Error creating %s table: %v", table.name, err)
-		}
-		fmt.Printf("%s table created successfully!\n", table.name)
+func runMigrations() {
+	loadEnvironmentVariables()
+
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	// Correct database URL format for MySQL with parseTime=true
+	databaseURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPassword, dbHost, dbPort, dbName)
+
+	// Run migration command
+	cmd := exec.Command("migrate", "-path", "db/migrations", "-database", "mysql://"+databaseURL, "up")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Migration failed: %v\nOutput: %s", err, string(output))
 	}
+	fmt.Println("Migrations applied successfully")
 }

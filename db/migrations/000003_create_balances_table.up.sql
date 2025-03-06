@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS balances (
+    user_id INT PRIMARY KEY,
+    amount DECIMAL(10, 2) NOT NULL,
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
