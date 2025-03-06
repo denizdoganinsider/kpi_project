@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/denizdoganinsider/kpi_project/service"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -80,17 +78,27 @@ func main() {
 		log.Fatalf("Error: Database connection is nil")
 	}
 
-	// Create tables BEFORE closing DB
-	runMigrations()
-
+	// User repository and service setup
 	userRepository := persistence.NewUserRepository(db)
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
 	authController := controller.NewAuthController(userService)
 
-	// Register routes
+	// Balance repository and service setup
+	balanceRepository := persistence.NewBalanceRepository(db)
+	balanceService := service.NewBalanceService(balanceRepository)
+	balanceController := controller.NewBalanceController(balanceService)
+
+	// Transaction repository and service setup
+	transactionRepository := persistence.NewTransactionRepository(db)
+	transactionService := service.NewTransactionService(transactionRepository, balanceRepository)
+	transactionController := controller.NewTransactionController(transactionService)
+
+	// Register routes for user, auth, balance, and transaction
 	userController.RegisterRoutes(e)
 	authController.RegisterRoutes(e)
+	balanceController.RegisterRoutes(e)
+	transactionController.RegisterRoutes(e)
 
 	// Graceful shutdown handling
 	sigs := make(chan os.Signal, 1)
@@ -117,32 +125,4 @@ func main() {
 		log.Fatalf("Error closing database: %v", err)
 	}
 	fmt.Println("Database connection closed.")
-}
-
-func loadEnvironmentVariables() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-}
-
-func runMigrations() {
-	loadEnvironmentVariables()
-
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-
-	// Correct database URL format for MySQL with parseTime=true
-	databaseURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPassword, dbHost, dbPort, dbName)
-
-	// Run migration command
-	cmd := exec.Command("migrate", "-path", "db/migrations", "-database", "mysql://"+databaseURL, "up")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("Migration failed: %v\nOutput: %s", err, string(output))
-	}
-	fmt.Println("Migrations applied successfully")
 }
