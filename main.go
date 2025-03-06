@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -79,15 +78,27 @@ func main() {
 		log.Fatalf("Error: Database connection is nil")
 	}
 
-	// Create tables BEFORE closing DB
-	createTables(db)
-
+	// User repository and service setup
 	userRepository := persistence.NewUserRepository(db)
 	userService := service.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
+	authController := controller.NewAuthController(userService)
 
-	// Register routes
+	// Balance repository and service setup
+	balanceRepository := persistence.NewBalanceRepository(db)
+	balanceService := service.NewBalanceService(balanceRepository)
+	balanceController := controller.NewBalanceController(balanceService)
+
+	// Transaction repository and service setup
+	transactionRepository := persistence.NewTransactionRepository(db)
+	transactionService := service.NewTransactionService(transactionRepository, balanceRepository)
+	transactionController := controller.NewTransactionController(transactionService)
+
+	// Register routes for user, auth, balance, and transaction
 	userController.RegisterRoutes(e)
+	authController.RegisterRoutes(e)
+	balanceController.RegisterRoutes(e)
+	transactionController.RegisterRoutes(e)
 
 	// Graceful shutdown handling
 	sigs := make(chan os.Signal, 1)
@@ -114,66 +125,4 @@ func main() {
 		log.Fatalf("Error closing database: %v", err)
 	}
 	fmt.Println("Database connection closed.")
-}
-
-func createTables(db *sql.DB) {
-	createUsersTable := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		username VARCHAR(100) NOT NULL UNIQUE,
-		email VARCHAR(100) NOT NULL UNIQUE,
-		password_hash VARCHAR(255) NOT NULL,
-		role VARCHAR(50),
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-	);`
-
-	createTransactionsTable := `
-	CREATE TABLE IF NOT EXISTS transactions (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		from_user_id INT NOT NULL,
-		to_user_id INT NOT NULL,
-		amount DECIMAL(10, 2) NOT NULL,
-		type VARCHAR(50) NOT NULL,
-		status VARCHAR(50) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
-	);`
-
-	createBalancesTable := `
-	CREATE TABLE IF NOT EXISTS balances (
-		user_id INT PRIMARY KEY,
-		amount DECIMAL(10, 2) NOT NULL,
-		last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-	);`
-
-	createAuditLogsTable := `
-	CREATE TABLE IF NOT EXISTS audit_logs (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		entity_type VARCHAR(50) NOT NULL,
-		entity_id INT NOT NULL,
-		action VARCHAR(50) NOT NULL,
-		details TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	tables := []struct {
-		name string
-		sql  string
-	}{
-		{"Users", createUsersTable},
-		{"Transactions", createTransactionsTable},
-		{"Balances", createBalancesTable},
-		{"AuditLogs", createAuditLogsTable},
-	}
-
-	for _, table := range tables {
-		_, err := db.Exec(table.sql)
-		if err != nil {
-			log.Fatalf("Error creating %s table: %v", table.name, err)
-		}
-		fmt.Printf("%s table created successfully!\n", table.name)
-	}
 }

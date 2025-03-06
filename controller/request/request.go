@@ -17,3 +17,8 @@ func (addUserRequest AddUserRequest) ToModel() model.UserCreate {
 		Role:     addUserRequest.Role,
 	}
 }
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
