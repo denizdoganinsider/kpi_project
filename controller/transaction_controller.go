@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/denizdoganinsider/kpi_project/controller/request"
+	"github.com/denizdoganinsider/kpi_project/controller/response"
 	"github.com/denizdoganinsider/kpi_project/service"
 	"github.com/labstack/echo/v4"
 )
@@ -100,22 +102,20 @@ func (transactionController *TransactionController) Debit(c echo.Context) error 
 }
 
 func (transactionController *TransactionController) Transfer(c echo.Context) error {
-	var request struct {
-		FromUserID int64   `json:"from_user_id"`
-		ToUserID   int64   `json:"to_user_id"`
-		Amount     float64 `json:"amount"`
-	}
+	var request request.TransactionRequest
 
-	if err := c.Bind(&request); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request data",
+	err := c.Bind(&request)
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			ErrorDescription: "Invalid request data",
 		})
 	}
 
 	transaction, err := transactionController.transactionService.Transfer(request.FromUserID, request.ToUserID, request.Amount)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
