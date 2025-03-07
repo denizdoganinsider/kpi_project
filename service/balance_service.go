@@ -15,15 +15,17 @@ type IBalanceService interface {
 }
 
 type BalanceService struct {
-	balanceRepo persistence.IBalanceRepository
+	balanceRepository persistence.IBalanceRepository
 }
 
-func NewBalanceService(balanceRepo persistence.IBalanceRepository) IBalanceService {
-	return &BalanceService{balanceRepo: balanceRepo}
+func NewBalanceService(balanceRepository persistence.IBalanceRepository) IBalanceService {
+	return &BalanceService{
+		balanceRepository: balanceRepository,
+	}
 }
 
 func (s *BalanceService) GetBalanceByUserID(userID int64) (*domain.Balance, error) {
-	balance, err := s.balanceRepo.GetBalanceByUserID(userID)
+	balance, err := s.balanceRepository.GetBalanceByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -31,15 +33,14 @@ func (s *BalanceService) GetBalanceByUserID(userID int64) (*domain.Balance, erro
 }
 
 func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
-	// Kullanıcının mevcut bakiyesi alınır
-	balance, err := s.balanceRepo.GetBalanceByUserID(userID)
+	balance, err := s.balanceRepository.GetBalanceByUserID(userID)
 	if err != nil {
 		return err
 	}
 
 	// Eğer kullanıcı için bakiye bulunmazsa, yeni bir bakiye oluşturulur
 	if balance == nil {
-		err = s.balanceRepo.CreateBalance(userID, amount)
+		err = s.balanceRepository.CreateBalance(userID, amount)
 		if err != nil {
 			return err
 		}
@@ -53,7 +54,7 @@ func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
 		return errors.New("insufficient balance")
 	}
 
-	err = s.balanceRepo.UpdateBalance(userID, newAmount)
+	err = s.balanceRepository.UpdateBalance(userID, newAmount)
 	if err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
 
 func (s *BalanceService) CreateBalance(userID int64, amount float64) error {
 	// Kullanıcı için yeni bir bakiye oluşturulur
-	err := s.balanceRepo.CreateBalance(userID, amount)
+	err := s.balanceRepository.CreateBalance(userID, amount)
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/denizdoganinsider/kpi_project/controller/response"
 	"github.com/denizdoganinsider/kpi_project/service"
 	"github.com/labstack/echo/v4"
 )
@@ -30,21 +30,20 @@ func (balanceController *BalanceController) GetBalance(c echo.Context) error {
 	userID := c.Param("userID")
 	userId, err := strconv.Atoi(userID)
 	if err != nil {
-		fmt.Println("UserId:", userID)
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid user ID",
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			ErrorDescription: "Invalid user ID",
 		})
 	}
 
 	balance, err := balanceController.balanceService.GetBalanceByUserID(int64(userId))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]float64{
-		"balance": balance.Amount,
+	return c.JSON(http.StatusOK, response.GetBalanceResponse{
+		Balance: balance.Amount,
 	})
 }
 
