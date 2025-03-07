@@ -6,6 +6,10 @@ type ErrorResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
+type GetBalanceResponse struct {
+	Balance float64 `json:"balance"`
+}
+
 type UserResponse struct {
 	Username  string `json:"username"`
 	Email     string `json:"email"`
