@@ -24,23 +24,23 @@ func NewBalanceService(balanceRepository persistence.IBalanceRepository) IBalanc
 	}
 }
 
-func (s *BalanceService) GetBalanceByUserID(userID int64) (*domain.Balance, error) {
-	balance, err := s.balanceRepository.GetBalanceByUserID(userID)
+func (balanceService *BalanceService) GetBalanceByUserID(userID int64) (*domain.Balance, error) {
+	balance, err := balanceService.balanceRepository.GetBalanceByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 	return balance, nil
 }
 
-func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
-	balance, err := s.balanceRepository.GetBalanceByUserID(userID)
-	if err != nil {
+func (balanceService *BalanceService) UpdateBalance(userID int64, amount float64) error {
+	balance, err := balanceService.balanceRepository.GetBalanceByUserID(userID)
+	if err != nil && err.Error() != "user doesn't have balance" {
 		return err
 	}
 
-	// Eğer kullanıcı için bakiye bulunmazsa, yeni bir bakiye oluşturulur
+	/* if we cannot find any balance for user, system create a new balance */
 	if balance == nil {
-		err = s.balanceRepository.CreateBalance(userID, amount)
+		err = balanceService.balanceRepository.CreateBalance(userID, amount)
 		if err != nil {
 			return err
 		}
@@ -48,13 +48,13 @@ func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
 		return nil
 	}
 
-	// Eğer bakiye varsa, yeni bakiyeyi güncelleme işlemi yapılır
+	/* if there is a balance we update to new balance */
 	newAmount := balance.Amount + amount
 	if newAmount < 0 {
 		return errors.New("insufficient balance")
 	}
 
-	err = s.balanceRepository.UpdateBalance(userID, newAmount)
+	err = balanceService.balanceRepository.UpdateBalance(userID, newAmount)
 	if err != nil {
 		return err
 	}
@@ -63,9 +63,9 @@ func (s *BalanceService) UpdateBalance(userID int64, amount float64) error {
 	return nil
 }
 
-func (s *BalanceService) CreateBalance(userID int64, amount float64) error {
+func (balanceService *BalanceService) CreateBalance(userID int64, amount float64) error {
 	// Kullanıcı için yeni bir bakiye oluşturulur
-	err := s.balanceRepository.CreateBalance(userID, amount)
+	err := balanceService.balanceRepository.CreateBalance(userID, amount)
 	if err != nil {
 		return err
 	}

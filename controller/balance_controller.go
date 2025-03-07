@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/denizdoganinsider/kpi_project/controller/request"
 	"github.com/denizdoganinsider/kpi_project/controller/response"
 	"github.com/denizdoganinsider/kpi_project/service"
 	"github.com/labstack/echo/v4"
@@ -21,15 +22,16 @@ func NewBalanceController(balanceService service.IBalanceService) *BalanceContro
 
 func (balanceController *BalanceController) RegisterRoutes(e *echo.Echo) {
 	// Balance routes
-	e.GET("/api/v1/balance/:userID", balanceController.GetBalance)
+	e.GET("/api/v1/balance/:userID", balanceController.GetBalanceByUserID)
 	e.POST("/api/v1/balance/credit", balanceController.CreditBalance)
 	e.POST("/api/v1/balance/debit", balanceController.DebitBalance)
 }
 
-func (balanceController *BalanceController) GetBalance(c echo.Context) error {
+func (balanceController *BalanceController) GetBalanceByUserID(c echo.Context) error {
 	userID := c.Param("userID")
 	userId, err := strconv.Atoi(userID)
 	if err != nil {
+		/* if data format is incorrect */
 		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
 			ErrorDescription: "Invalid user ID",
 		})
@@ -37,68 +39,63 @@ func (balanceController *BalanceController) GetBalance(c echo.Context) error {
 
 	balance, err := balanceController.balanceService.GetBalanceByUserID(int64(userId))
 	if err != nil {
+		/* if user doesn't have any balance */
 		return c.JSON(http.StatusNotFound, response.ErrorResponse{
 			ErrorDescription: err.Error(),
 		})
 	}
 
+	/* user have a balance so we are returning the balance amount */
 	return c.JSON(http.StatusOK, response.GetBalanceResponse{
 		Balance: balance.Amount,
 	})
 }
 
 func (balanceController *BalanceController) CreditBalance(c echo.Context) error {
-	var request struct {
-		UserID int64   `json:"user_id"`
-		Amount float64 `json:"amount"`
-	}
-
-	if err := c.Bind(&request); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request data",
-		})
-	}
-
-	// Credit balance (add amount)
-	err := balanceController.balanceService.UpdateBalance(request.UserID, request.Amount)
-	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
-	// Fetch updated balance
-	updatedBalance, _ := balanceController.balanceService.GetBalanceByUserID(request.UserID)
-
-	return c.JSON(http.StatusOK, map[string]float64{
-		"balance": updatedBalance.Amount,
-	})
+	return balanceController.UpdateBalance(c, true)
 }
 
 func (balanceController *BalanceController) DebitBalance(c echo.Context) error {
-	var request struct {
-		UserID int64   `json:"user_id"`
-		Amount float64 `json:"amount"`
-	}
+	return balanceController.UpdateBalance(c, false)
+}
 
-	if err := c.Bind(&request); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request data",
+func (balanceController *BalanceController) UpdateBalance(c echo.Context, isCredit bool) error {
+	var request request.UpdateBalanceRequest
+	var amount float64
+
+	bindError := c.Bind(&request)
+
+	if bindError != nil {
+		/* if data format is incorrect */
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			ErrorDescription: "Invalid request data",
 		})
 	}
 
-	// Debit balance (subtract amount)
-	err := balanceController.balanceService.UpdateBalance(request.UserID, -request.Amount)
+	if isCredit {
+		amount = request.Amount
+	} else {
+		amount = -request.Amount
+	}
+	/* adding the given amount to user's previous balance */
+	err := balanceController.balanceService.UpdateBalance(request.UserID, amount)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		errDescription := err.Error()
+
+		if errDescription == "user not found" {
+			return c.JSON(http.StatusNotFound, response.ErrorResponse{
+				ErrorDescription: errDescription,
+			})
+		}
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			ErrorDescription: errDescription,
 		})
 	}
 
-	// Fetch updated balance
+	/* fetching updated balance and sending to user */
 	updatedBalance, _ := balanceController.balanceService.GetBalanceByUserID(request.UserID)
 
-	return c.JSON(http.StatusOK, map[string]float64{
-		"balance": updatedBalance.Amount,
+	return c.JSON(http.StatusOK, response.GetBalanceResponse{
+		Balance: updatedBalance.Amount,
 	})
 }

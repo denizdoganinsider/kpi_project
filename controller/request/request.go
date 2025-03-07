@@ -22,3 +22,8 @@ type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type UpdateBalanceRequest struct {
+	UserID int64   `json:"user_id"`
+	Amount float64 `json:"amount"`
+}

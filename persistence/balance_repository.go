@@ -28,7 +28,7 @@ func (balanceRepository *BalanceRepository) GetBalanceByUserID(userID int64) (*d
 	if errForUserExistence != nil {
 		return nil, errForUserExistence
 	} else if count == 0 {
-		return nil, fmt.Errorf("user not found with given id %d", userID)
+		return nil, fmt.Errorf("user not found")
 	}
 
 	query := `SELECT user_id, amount, last_updated_at FROM balances WHERE user_id = ?`
@@ -38,7 +38,7 @@ func (balanceRepository *BalanceRepository) GetBalanceByUserID(userID int64) (*d
 	err := row.Scan(&balance.UserID, &balance.Amount, &balance.LastUpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user doesn't have balance with given id %d", userID)
+			return nil, fmt.Errorf("user doesn't have balance")
 		}
 		return nil, err
 	}
