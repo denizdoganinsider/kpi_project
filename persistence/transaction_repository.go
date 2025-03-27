@@ -12,7 +12,7 @@ type ITransactionRepository interface {
 	GetTransactionByID(id int64) (*domain.Transaction, error)
 	UpdateTransactionStatus(id int64, status domain.TransactionStatus) error
 	GetUserTransactions(userID int64) ([]domain.Transaction, error)
-	UpdateBalance(userID int64, amount float64) error // Yeni bakiye güncelleme fonksiyonu
+	UpdateBalance(userID int64, amount float64) error
 }
 
 type TransactionRepository struct {
@@ -38,7 +38,7 @@ func (repo *TransactionRepository) CreateTransaction(transaction *domain.Transac
 }
 
 func (repo *TransactionRepository) GetTransactionByID(id int64) (*domain.Transaction, error) {
-	query := `SELECT id, from_user_id, to_user_id, amount, type, status, created_at, updated_at FROM transactions WHERE id = ?`
+	query := `SELECT * FROM transactions WHERE id = ?`
 	row := repo.db.QueryRow(query, id)
 
 	var transaction domain.Transaction
@@ -61,7 +61,7 @@ func (repo *TransactionRepository) GetTransactionByID(id int64) (*domain.Transac
 
 func (repo *TransactionRepository) UpdateTransactionStatus(id int64, status domain.TransactionStatus) error {
 	query := `UPDATE transactions SET status = ?, updated_at = ? WHERE id = ?`
-	_, err := repo.db.Exec(query, status, time.Now(), id) // Güncel zaman ekleniyor
+	_, err := repo.db.Exec(query, status, time.Now(), id)
 	return err
 }
 
@@ -93,9 +93,7 @@ func (repo *TransactionRepository) GetUserTransactions(userID int64) ([]domain.T
 	return transactions, nil
 }
 
-// UpdateBalance, kullanıcının bakiyesini güncelleyen yeni bir fonksiyon
 func (repo *TransactionRepository) UpdateBalance(userID int64, amount float64) error {
-	// Bakiye güncellenmesi için SQL sorgusu
 	query := `UPDATE balances SET amount = amount + ? WHERE user_id = ?`
 	_, err := repo.db.Exec(query, amount, userID)
 	return err
