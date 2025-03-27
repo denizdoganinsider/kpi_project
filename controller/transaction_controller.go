@@ -35,12 +35,17 @@ func (transactionController *TransactionController) GetTransactionByID(c echo.Co
 
 	transaction, err := transactionController.transactionService.GetTransactionByID(int64(transactionID))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, transaction)
+	if transaction != nil {
+		return c.JSON(http.StatusOK, transaction)
+
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (transactionController *TransactionController) GetTransactionHistory(c echo.Context) error {
@@ -49,8 +54,8 @@ func (transactionController *TransactionController) GetTransactionHistory(c echo
 
 	transactions, err := transactionController.transactionService.GetTransactionHistory(int64(userId))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
@@ -64,15 +69,15 @@ func (transactionController *TransactionController) Credit(c echo.Context) error
 	}
 
 	if err := c.Bind(&request); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request data",
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			ErrorDescription: "Invalid request data",
 		})
 	}
 
 	transaction, err := transactionController.transactionService.Credit(request.UserID, request.Amount)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
@@ -86,15 +91,15 @@ func (transactionController *TransactionController) Debit(c echo.Context) error 
 	}
 
 	if err := c.Bind(&request); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request data",
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			ErrorDescription: "Invalid request data",
 		})
 	}
 
 	transaction, err := transactionController.transactionService.Debit(request.UserID, request.Amount)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			ErrorDescription: err.Error(),
 		})
 	}
 
