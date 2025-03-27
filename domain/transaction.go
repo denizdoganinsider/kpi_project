@@ -29,7 +29,6 @@ type Transaction struct {
 	Type      TransactionType
 	Status    TransactionStatus
 	CreatedAt time.Time
-	UpdatedAt time.Time
 }
 
 func (t *Transaction) Validate() error {

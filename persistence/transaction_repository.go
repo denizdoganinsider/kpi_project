@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"database/sql"
-	"time"
 
 	"github.com/denizdoganinsider/kpi_project/domain"
 )
@@ -30,10 +29,8 @@ func (repo *TransactionRepository) CreateTransaction(transaction *domain.Transac
 		toUser.Valid = true
 	}
 
-	query := `
-		INSERT INTO transactions (from_user_id, to_user_id, amount, type, status, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := repo.db.Exec(query, transaction.FromUser, toUser, transaction.Amount, transaction.Type, transaction.Status, transaction.CreatedAt, transaction.UpdatedAt)
+	query := `INSERT INTO transactions (from_user_id, to_user_id, amount, type, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	_, err := repo.db.Exec(query, transaction.FromUser, transaction.ToUser, transaction.Amount, transaction.Type, transaction.Status, transaction.CreatedAt)
 	return err
 }
 
@@ -43,7 +40,7 @@ func (repo *TransactionRepository) GetTransactionByID(id int64) (*domain.Transac
 
 	var transaction domain.Transaction
 	var toUser sql.NullInt64
-	err := row.Scan(&transaction.ID, &transaction.FromUser, &toUser, &transaction.Amount, &transaction.Type, &transaction.Status, &transaction.CreatedAt, &transaction.UpdatedAt)
+	err := row.Scan(&transaction.ID, &transaction.FromUser, &toUser, &transaction.Amount, &transaction.Type, &transaction.Status, &transaction.CreatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -60,13 +57,13 @@ func (repo *TransactionRepository) GetTransactionByID(id int64) (*domain.Transac
 }
 
 func (repo *TransactionRepository) UpdateTransactionStatus(id int64, status domain.TransactionStatus) error {
-	query := `UPDATE transactions SET status = ?, updated_at = ? WHERE id = ?`
-	_, err := repo.db.Exec(query, status, time.Now(), id)
+	query := `UPDATE transactions SET status = ? WHERE id = ?`
+	_, err := repo.db.Exec(query, status, id)
 	return err
 }
 
 func (repo *TransactionRepository) GetUserTransactions(userID int64) ([]domain.Transaction, error) {
-	query := `SELECT id, from_user_id, to_user_id, amount, type, status, created_at, updated_at FROM transactions WHERE from_user_id = ? OR to_user_id = ?`
+	query := `SELECT id, from_user_id, to_user_id, amount, type, status, created_at FROM transactions WHERE from_user_id = ? OR to_user_id = ?`
 	rows, err := repo.db.Query(query, userID, userID)
 	if err != nil {
 		return nil, err
@@ -78,7 +75,7 @@ func (repo *TransactionRepository) GetUserTransactions(userID int64) ([]domain.T
 	for rows.Next() {
 		var transaction domain.Transaction
 		var toUser sql.NullInt64
-		err := rows.Scan(&transaction.ID, &transaction.FromUser, &toUser, &transaction.Amount, &transaction.Type, &transaction.Status, &transaction.CreatedAt, &transaction.UpdatedAt)
+		err := rows.Scan(&transaction.ID, &transaction.FromUser, &toUser, &transaction.Amount, &transaction.Type, &transaction.Status, &transaction.CreatedAt)
 		if err != nil {
 			return nil, err
 		}

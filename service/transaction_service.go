@@ -28,95 +28,91 @@ func NewTransactionService(transactionRepository persistence.ITransactionReposit
 	}
 }
 
-func (transactionService *TransactionService) Credit(userID int64, amount float64) (*domain.Transaction, error) {
+func (s *TransactionService) Credit(userID int64, amount float64) (*domain.Transaction, error) {
 	if amount <= 0 {
 		return nil, errors.New("amount must be greater than zero")
 	}
 
-	transaction := &domain.Transaction{
+	tx := &domain.Transaction{
 		FromUser:  userID,
 		Amount:    amount,
 		Type:      domain.CreditTransaction,
 		Status:    domain.Pending,
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
 
-	err := transactionService.transactionRepository.CreateTransaction(transaction)
-	if err != nil {
+	if err := s.transactionRepository.CreateTransaction(tx); err != nil {
 		return nil, err
 	}
 
-	err = transactionService.balanceRepo.UpdateBalance(userID, amount)
-	if err != nil {
+	if err := s.balanceRepo.UpdateBalance(userID, amount); err != nil {
+		s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Failed)
 		return nil, err
 	}
 
-	return transaction, nil
+	s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Completed)
+	return tx, nil
 }
 
-func (transactionService *TransactionService) Debit(userID int64, amount float64) (*domain.Transaction, error) {
+func (s *TransactionService) Debit(userID int64, amount float64) (*domain.Transaction, error) {
 	if amount <= 0 {
 		return nil, errors.New("amount must be greater than zero")
 	}
 
-	transaction := &domain.Transaction{
+	tx := &domain.Transaction{
 		FromUser:  userID,
 		Amount:    -amount,
 		Type:      domain.DebitTransaction,
 		Status:    domain.Pending,
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
 
-	err := transactionService.transactionRepository.CreateTransaction(transaction)
-	if err != nil {
+	if err := s.transactionRepository.CreateTransaction(tx); err != nil {
 		return nil, err
 	}
 
-	err = transactionService.balanceRepo.UpdateBalance(userID, -amount)
-	if err != nil {
+	if err := s.balanceRepo.UpdateBalance(userID, -amount); err != nil {
+		s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Failed)
 		return nil, err
 	}
 
-	return transaction, nil
+	s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Completed)
+	return tx, nil
 }
 
-func (transactionService *TransactionService) Transfer(fromUserID int64, toUserID int64, amount float64) (*domain.Transaction, error) {
+func (s *TransactionService) Transfer(fromUserID int64, toUserID int64, amount float64) (*domain.Transaction, error) {
 	if amount <= 0 {
 		return nil, errors.New("amount must be greater than zero")
 	}
-
 	if fromUserID == toUserID {
 		return nil, errors.New("transfer cannot be to the same user")
 	}
 
-	transaction := &domain.Transaction{
+	tx := &domain.Transaction{
 		FromUser:  fromUserID,
 		ToUser:    &toUserID,
 		Amount:    amount,
 		Type:      domain.TransferTransaction,
 		Status:    domain.Pending,
 		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
 
-	err := transactionService.transactionRepository.CreateTransaction(transaction)
-	if err != nil {
+	if err := s.transactionRepository.CreateTransaction(tx); err != nil {
 		return nil, err
 	}
 
-	err = transactionService.balanceRepo.UpdateBalance(fromUserID, -amount)
-	if err != nil {
+	if err := s.balanceRepo.UpdateBalance(fromUserID, -amount); err != nil {
+		s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Failed)
 		return nil, err
 	}
 
-	err = transactionService.balanceRepo.UpdateBalance(toUserID, amount)
-	if err != nil {
+	if err := s.balanceRepo.UpdateBalance(toUserID, amount); err != nil {
+		s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Failed)
 		return nil, err
 	}
 
-	return transaction, nil
+	s.transactionRepository.UpdateTransactionStatus(tx.ID, domain.Completed)
+	return tx, nil
 }
 
 func (transactionService *TransactionService) GetTransactionHistory(userID int64) ([]domain.Transaction, error) {
